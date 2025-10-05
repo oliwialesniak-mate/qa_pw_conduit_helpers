@@ -3,7 +3,7 @@ import { generateNewUserData } from '../../src/utils/generateNewUserData';
 import { signUpUser } from '../../src/ui/actions/auth/signUpUser';
 import { createNewArticle } from '../../src/ui/actions/article/createNewArticle';
 import { EditArticlePage } from '../../src/ui/pages/article/EditArticlePage';
-import { ArticlePage } from '../../src/ui/pages/article/CreateArticlePage';
+import { ViewArticlePage } from '../../src/ui/pages/article/ViewArticlePage';
 import { ERROR_MESSAGES } from '../../src/ui/constants/articleErrorMessages';
 
 test.describe('📝 Edit Article Feature', () => {
@@ -12,11 +12,9 @@ test.describe('📝 Edit Article Feature', () => {
   let articlePage;
 
   test.beforeEach(async ({ page }) => {
-    // 1️⃣ Register and sign in a new user
     const user = generateNewUserData();
     await signUpUser(page, user);
 
-    // 2️⃣ Create a new article
     article = {
       title: 'My Test Article',
       description: 'Initial description',
@@ -25,32 +23,28 @@ test.describe('📝 Edit Article Feature', () => {
     };
     await createNewArticle(page, article);
 
-    // 3️⃣ Initialize pages
     editArticlePage = new EditArticlePage(page);
-    articlePage = new ViewArticlePage(page);
+    articlePage = new ViewArticlePage(page); // ✅ Use the class you imported
 
-    // 4️⃣ Open the Edit Article page
     await editArticlePage.openEditor();
   });
-
-  // ---------------------------- TESTS ----------------------------
 
   test('Edit article title', async ({ page }) => {
     await editArticlePage.updateTitle('Updated Title');
     await editArticlePage.publishChanges();
-    await expect(articlePage.articleTitle).toHaveText('Updated Title');
+    await articlePage.assertArticleTitleIsVisible('Updated Title'); // ✅ Use class method
   });
 
   test('Edit article description', async ({ page }) => {
     await editArticlePage.updateDescription('Updated description');
     await editArticlePage.publishChanges();
-    await expect(articlePage.articleDescription).toContainText('Updated description');
+    await expect(page.locator('p')).toContainText('Updated description'); // description locator not in class
   });
 
   test('Edit article text', async ({ page }) => {
     await editArticlePage.updateText('Updated body text');
     await editArticlePage.publishChanges();
-    await expect(articlePage.articleBody).toContainText('Updated body text');
+    await articlePage.assertArticleTextIsVisible('Updated body text'); // ✅ Use class method
   });
 
   test('Add tag to article without tags', async ({ page }) => {
@@ -90,19 +84,15 @@ test.describe('📝 Edit Article Feature', () => {
     await editArticlePage.assertErrorMessageContainsText(ERROR_MESSAGES.MISSING_TEXT);
   });
 
-  // ---------------------- EXTRA USEFUL TESTS ----------------------
-
   test('Cancel edit and ensure original article remains unchanged', async ({ page }) => {
     await editArticlePage.updateTitle('Temporary Title');
-    // Instead of publishing, go back
     await page.goBack();
-    await expect(articlePage.articleTitle).toHaveText(article.title);
+    await articlePage.assertArticleTitleIsVisible(article.title); // ✅ Use class method
   });
 
   test('Prevent adding duplicate tags', async ({ page }) => {
     await editArticlePage.addTag('first-tag');
     await editArticlePage.publishChanges();
-    // Duplicate should not appear twice
     const tagCount = await page.locator('.tag-pill:has-text("first-tag")').count();
     expect(tagCount).toBe(1);
   });
