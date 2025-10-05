@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 export class EditArticlePage {
   constructor(page) {
@@ -8,29 +8,30 @@ export class EditArticlePage {
     this.textField = page.getByPlaceholder('Write your article (in markdown)');
     this.publishButton = page.getByRole('button', { name: 'Publish Article' });
     this.tagsInput = page.getByPlaceholder('Enter tags');
-    this.errorMessage = page.getByRole('list').nth(1);
+    this.errorMessage = page.locator('.error-messages li');
   }
 
   async openEditor() {
-    await test.step(`Open the Edit Article page`, async () => {
+    await test.step('Open edit article page', async () => {
       await this.page.getByRole('link', { name: 'Edit Article' }).click();
+      await this.page.waitForSelector('textarea[placeholder="Write your article (in markdown)"]', { state: 'visible' });
     });
   }
 
   async updateTitle(title) {
-    await test.step(`Update article title to "${title}"`, async () => {
+    await test.step('Update article title', async () => {
       await this.titleField.fill(title);
     });
   }
 
   async updateDescription(description) {
-    await test.step(`Update article description to "${description}"`, async () => {
+    await test.step('Update article description', async () => {
       await this.descriptionField.fill(description);
     });
   }
 
   async updateText(text) {
-    await test.step(`Update article text to "${text}"`, async () => {
+    await test.step('Update article text', async () => {
       await this.textField.fill(text);
     });
   }
@@ -38,25 +39,31 @@ export class EditArticlePage {
   async addTag(tag) {
     await test.step(`Add tag "${tag}"`, async () => {
       await this.tagsInput.fill(tag);
-      await this.page.keyboard.press('Enter');
+      await this.tagsInput.press('Enter');
+      await this.page.locator('.tag-pill', { hasText: tag }).waitFor({ state: 'visible' });
     });
   }
 
-  async removeTag(tagName) {
-    await test.step(`Remove tag "${tagName}"`, async () => {
-      await this.page.locator(`.tag-pill:has-text("${tagName}") .ion-close-round`).click();
+  async removeTag(tag) {
+    await test.step(`Remove tag "${tag}"`, async () => {
+      const tagElement = this.page.locator('.tag-pill', { hasText: tag });
+      if (await tagElement.count() > 0) {
+        await tagElement.locator('button').click();
+        await tagElement.waitFor({ state: 'detached' });
+      }
     });
   }
 
   async publishChanges() {
-    await test.step(`Publish article changes`, async () => {
+    await test.step('Click publish changes', async () => {
       await this.publishButton.click();
+      await this.page.waitForLoadState('networkidle');
     });
   }
 
-  async assertErrorMessageContainsText(text) {
-    await test.step(`Assert error message contains "${text}"`, async () => {
-      await expect(this.errorMessage).toContainText(text);
+  async assertErrorMessageContainsText(messageText) {
+    await test.step(`Assert error message contains "${messageText}"`, async () => {
+      await expect(this.errorMessage).toContainText(messageText);
     });
   }
 }

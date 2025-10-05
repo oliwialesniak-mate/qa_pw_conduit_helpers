@@ -1,35 +1,50 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 import { CreateArticlePage } from '../../pages/article/CreateArticlePage';
 import { ViewArticlePage } from '../../pages/article/ViewArticlePage';
 
 export async function createNewArticle(page, article) {
+  let viewArticlePage;
   await test.step(`Create a new article: "${article.title}"`, async () => {
     const createArticlePage = new CreateArticlePage(page);
-    const viewArticlePage = new ViewArticlePage(page); // dopasowana nazwa
+    viewArticlePage = new ViewArticlePage(page);
 
-    // Navigate to New Article
-    await page.getByRole('link', { name: 'New Article' }).click();
+    await test.step('Navigate to New Article page', async () => {
+      await page.getByRole('link', { name: 'New Article' }).click();
+      await page.waitForLoadState('networkidle');
+    });
 
-    // Fill required fields
-    await createArticlePage.fillTitleField(article.title);
-    await createArticlePage.fillDescriptionField(article.description);
-    await createArticlePage.fillTextField(article.text ?? article.body ?? '');
+    await test.step('Fill article title', async () => {
+      await createArticlePage.fillTitleField(article.title);
+    });
 
-    // Add tags if any
+    await test.step('Fill article description', async () => {
+      await createArticlePage.fillDescriptionField(article.description);
+    });
+
+    await test.step('Fill article text/body', async () => {
+      await createArticlePage.fillTextField(article.text ?? article.body ?? '');
+    });
+
     if (article.tags && article.tags.length > 0) {
-      const tagsInput = page.getByPlaceholder('Enter tags');
       for (const tag of article.tags) {
         await test.step(`Add tag "${tag}"`, async () => {
+          const tagsInput = createArticlePage.getTagsInput();
           await tagsInput.fill(tag);
-          await page.keyboard.press('Enter');
+          await tagsInput.press('Enter');
+          await page.locator('.tag-pill', { hasText: tag }).waitFor({ state: 'visible' });
         });
       }
     }
 
-    // Publish article
-    await createArticlePage.clickPublishArticleButton();
+    await test.step('Click Publish Article button', async () => {
+      await createArticlePage.clickPublishArticleButton();
+      await page.waitForLoadState('networkidle');
+    });
 
-    // Assert article title
-    await viewArticlePage.assertArticleTitleIsVisible(article.title);
+    await test.step('Verify article title is visible', async () => {
+      await viewArticlePage.assertArticleTitleIsVisible(article.title);
+    });
   });
+
+  return viewArticlePage;
 }
